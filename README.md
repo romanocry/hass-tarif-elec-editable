@@ -1,4 +1,4 @@
-# Tarif EDF integration for Home Assistant
+# Electricity Tarif integration for Home Assistant
 
 ## Installation
 
