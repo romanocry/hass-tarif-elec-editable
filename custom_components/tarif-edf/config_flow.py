@@ -1,23 +1,20 @@
 """Config flow for Tarif EDF integration."""
 from __future__ import annotations
-
 import logging
 from typing import Any
-
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.core import callback
 from homeassistant.helpers.selector import SelectSelector
-
 from .const import (
     DOMAIN,
-    DEFAULT_REFRESH_INTERVAL,
     CONTRACT_TYPE_BASE,
     CONTRACT_TYPE_HPHC,
-    CONTRACT_TYPE_TEMPO,
+    DEFAULT_BASE_PRICE,
+    DEFAULT_HP_PRICE,
+    DEFAULT_HC_PRICE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,19 +38,20 @@ STEP_USER = vol.Schema(
 @config_entries.HANDLERS.register(DOMAIN)
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tarif EDF."""
-
     VERSION = 1
 
     async def async_step_user(self, user_input: dict | None = None) -> FlowResult:
-        """Handle a flow initialized by the user."""
-        _LOGGER.debug("Setup process initiated by user.")
-
+        """Handle the initial step."""
         if user_input is None:
             return self.async_show_form(
-                step_id="user", data_schema=STEP_USER
+                step_id="user", 
+                data_schema=STEP_USER
             )
 
-        return self.async_create_entry(title="Option "+str.upper(user_input['contract_type']) + ", " + user_input['contract_power']+"kVA", data=user_input)
+        return self.async_create_entry(
+            title="Option "+str.upper(user_input['contract_type']) + ", " + user_input['contract_power']+"kVA",
+            data=user_input
+        )
 
     @staticmethod
     @callback
@@ -62,13 +60,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
-
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
@@ -82,12 +73,27 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        contract_type = self.config_entry.data.get("contract_type")
+        options = {}
+
+        if contract_type == CONTRACT_TYPE_BASE:
+            options["base_price"] = vol.Optional(
+                "base_price", 
+                default=self.config_entry.data.get("base_price", DEFAULT_BASE_PRICE)
+            )
+        elif contract_type == CONTRACT_TYPE_HPHC:
+            options.update({
+                "hp_price": vol.Optional(
+                    "hp_price", 
+                    default=self.config_entry.data.get("hp_price", DEFAULT_HP_PRICE)
+                ),
+                "hc_price": vol.Optional(
+                    "hc_price", 
+                    default=self.config_entry.data.get("hc_price", DEFAULT_HC_PRICE)
+                )
+            })
+
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional("refresh_interval", default=self.config_entry.options.get("refresh_interval", DEFAULT_REFRESH_INTERVAL)): int,
-                    vol.Optional("off_peak_hours_ranges", default=self.config_entry.options.get("off_peak_hours_ranges")): str,
-                }
-            ),
+            data_schema=vol.Schema(options)
         )
