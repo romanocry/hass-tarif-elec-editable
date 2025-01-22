@@ -31,8 +31,10 @@ STEP_USER = vol.Schema(
         vol.Required("contract_type"): vol.In({
             CONTRACT_TYPE_BASE: 'Base',
             CONTRACT_TYPE_HPHC: 'Heures pleines / Heures creuses',
-            CONTRACT_TYPE_TEMPO: 'Tempo',
-        })
+        }),
+        vol.Optional("base_price", default=DEFAULT_BASE_PRICE): float,
+        vol.Optional("hp_price", default=DEFAULT_HP_PRICE): float,
+        vol.Optional("hc_price", default=DEFAULT_HC_PRICE): float,
     }
 )
 
